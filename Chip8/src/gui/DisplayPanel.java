@@ -15,7 +15,6 @@ import javax.swing.JPanel;
 
 import emulator.Key;
 import emulator.Chip8;
-import emulator.KeyController;
 
 /**
  * The panel that displays the game currently being played.
@@ -24,25 +23,33 @@ import emulator.KeyController;
  */
 public class DisplayPanel extends JPanel {
 
+	//Note: there is synchronized on rescale() and draw(pixelData) because these methods can be called at the same time
+	//		and they both alter the same image. 
+	//		It is possible to change our image to a smaller one while setting pixels, thus drawing out-of-bounds on the new one.
+	
 	private static Color DEFAULT_COLOR = Color.black;
 
 	private int scale = Controller.DEFAULT_SCALE;
 
-	private KeyController buttonController;
-	private Map<Integer, Integer> buttonMapping;
 	private BufferedImage image;
+	private Chip8 chip8;
 
-	public DisplayPanel() {
+	/**
+	 * Creates a new <code>DisplayPanel</code> initialised with the given <code>KeyController</code>
+	 * @param keyController
+	 */
+	public DisplayPanel(Chip8 chip8) {
+		this.chip8 = chip8;
+		
+		//creates our image
 		resizeDisplay(scale);
-
-		for (int i = 0; i < image.getWidth(); i++) {
-			for (int j = 0; j < image.getHeight();j++) {
-				image.setRGB(i, j, DEFAULT_COLOR.getRGB());
-			}
-		}
-
+		//makes it the default color
+		clear();
+		
+		//register our key listener to respond to key events
 		registerKeyListener();
 
+		//make our panel focusable
 		setFocusable(true);
 		requestFocusInWindow();
 	}
@@ -51,8 +58,9 @@ public class DisplayPanel extends JPanel {
 	 * Sets the key listener to associate the keyboard buttons with the emulators buttons.
 	 */
 	private void registerKeyListener() {
-		buttonMapping = new HashMap<Integer, Integer>();
+		final Map<Integer, Integer> buttonMapping = new HashMap<Integer, Integer>();
 
+		//we put all the values from the Key enum into our mapping
 		for (Key k : Key.values()) buttonMapping.put(k.getCode(), k.getPosition());
 
 		KeyListener kl = new KeyAdapter() {
@@ -68,15 +76,11 @@ public class DisplayPanel extends JPanel {
 
 			private void interacted(int val, boolean pushed) {
 				Integer b = buttonMapping.get(val);
-				if (b != null) buttonController.keyInteracted(b, pushed);
+				if (b != null) chip8.keyInteracted(b, pushed);
 			}
 		};
 
 		addKeyListener(kl);
-	}
-
-	public void registerButtonController(KeyController buttonController) {
-		this.buttonController = buttonController;
 	}
 
 	@Override
@@ -84,7 +88,11 @@ public class DisplayPanel extends JPanel {
 		g.drawImage(image, 0, 0, null);
 	}
 
-	public void draw(boolean[][] data) {
+	/**
+	 * Draws the contents of data to the image. 
+	 * @param data the pixel data we are drawing
+	 */
+	public synchronized void draw(boolean[][] data) {
 		//we iterate over boolean data
 		for (int i = 0; i < data.length; i++) {
 			for (int j = 0; j < data[i].length; j++) {
@@ -98,26 +106,44 @@ public class DisplayPanel extends JPanel {
 				}
 			}
 		}
+		
 		repaint();
 	}
 
+	/**
+	 * Repaints the game image.
+	 */
 	public void paintAll() {
 		repaint();
 	}
 
+	/**
+	 * Clears the visual display back to the default color. This does not alter the pixel data stored in the emulator.
+	 */
 	public void clear() {
 		Graphics2D g = image.createGraphics();
-		g.setColor(Color.black);
+		g.setColor(DEFAULT_COLOR);
 		g.fillRect(0, 0, image.getWidth(), image.getWidth());
 
 		repaint();
 	}
 
-	public void resizeDisplay(int scale) {
+	/**
+	 * Resizes the panel and image to the given scale, then redraws the 
+	 * @param scale
+	 */
+	public synchronized void resizeDisplay(int scale) {
 		this.scale = scale;
+		
+		//resize our panel
 		Dimension d = new Dimension(Chip8.WIDTH * scale, Chip8.HEIGHT * scale);
 		setPreferredSize(d);
 
+		//resize our image
 		image = new BufferedImage(d.width, d.height, BufferedImage.TYPE_INT_RGB);
+		//then redraw the pixel data
+		draw(chip8.getPixelData());
+		//then to our screen
+		repaint();
 	}
 }

@@ -87,12 +87,14 @@ public class Controller {
 					try {
 						emulator.tick();
 					} catch (EmulatorException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
+						// TODO something here
 					}
+					
 					infoPanel.update();
 					if (emulator.getDrawFlag()) panel.draw(emulator.getPixelData());
+					
 					try {
+						//we need a sleep (even modest) so that key detection works properly
 						Thread.sleep(1);
 					} catch (InterruptedException e) {
 						//ignore

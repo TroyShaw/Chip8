@@ -5,7 +5,29 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import emulator.exception.EmulatorException;
+import emulator.exception.RegisterOutOfBoundsException;
+import emulator.exception.UnknownOpcodeException;
 
+/**
+ * The Chip8 emulator.
+ * <p>
+ * It contains:
+ *  <ul>
+ * <li>PC - program counter</li>
+ * <li>I - carry flag</li>
+ * <li>4096 byte main memory</li>
+ * <li>16 8-bit registers</li>
+ * <li>16 level stack for subroutines</li>
+ * <li>SP - stack pointer</li>
+ * <li>64 * 32 boolean array of pixel data</li>
+ * <li>draw flag indicating if we need to redraw this tick </li>
+ * <li>16 length boolean array for held keys</li>
+ * <li>delay timer, counting down to 0 at 60hz</li>
+ * <li>sound timer, counting down to 0 at 60hz, making a beep each time it reaches 0</li>
+ * </UL>
+ *
+ * @author Troy Shaw
+ */
 public class Chip8 implements KeyController {
 
 	/** Width of default emulator in pixels */
@@ -24,55 +46,73 @@ public class Chip8 implements KeyController {
 	private int[] memory;
 	private int[] register;
 	private int[] stack;
-	private int PC, SP, I, awaitedKeyRegister;
+	private int PC, SP, I;
 	private boolean[] keys;
 	private volatile int delayTimer, soundTimer;
-	private boolean awaitingKey;
 
+	/**
+	 * Constructs a new Chip8 emulator. <br>
+	 * A game can then be loaded with a call to <code>loadProgram()</code> to begin a game.
+	 */
 	public Chip8() {
+		keys 		= new boolean[16];
+		pixels 		= new boolean[WIDTH][HEIGHT];
+		drawFlag 	= false;
+		stack 		= new int[MAX_STACK];
+		register 	= new int[MAX_REGISTERS];
+		memory 		= new int[MAX_MEMORY];
+		
+		//make our timer which will constantly count down at 60hz, decrementing the two counters
 		Timer timer = new Timer(true);
 		TimerTask task = new TimerTask() {
 			@Override
 			public void run() {
+				//if sound is 1, it will next be decremented to 0, so we'll make a beep sound
 				if (soundTimer == 1) Toolkit.getDefaultToolkit().beep();
 				delayTimer = Math.max(delayTimer - 1, 0);
 				soundTimer = Math.max(soundTimer - 1, 0);
 
-				//this is an optimization if needed
-				//max num/ 0 
-				//delayTimer = (delayTimer - 1) & ~((delayTimer -1) >> 28);
-				//soundTimer = (soundTimer - 1) & ~((soundTimer -1) >> 28);
+				//this is an optimisation if needed
+				//max(num, 0) = (num - 1) & ~((num - 1) >> 28);
+				//delayTimer = (delayTimer - 1) & ~((delayTimer - 1) >> 28);
+				//soundTimer = (soundTimer - 1) & ~((soundTimer - 1) >> 28);
 			}
 		};
 
-		timer.schedule(task, 0, 17);
+		//clock counts down at 60 hz
+		timer.schedule(task, 0, Math.round(1000.0 / 60.0));
 	}
 
 	/**
 	 * Loads the program into memory and reinitialises variables. <br>
-	 * The program cannot be null, and cannot have length equal or greater than 3584 bytes (4096 - 512).
+	 * The program cannot be null, and cannot have length greater than 3584 bytes (4096 - 512).
 	 * @param program the program
 	 */
 	public void loadProgram(byte[] program) {
 		if (program == null) throw new NullPointerException("program cannot be null");
-		if (program.length >= 3584) throw new IllegalArgumentException("program cannot be longer than 3584 bytes");
+		if (program.length > 3584) throw new IllegalArgumentException("program cannot be longer than 3584 bytes");
 
-		pixels = new boolean[WIDTH][HEIGHT];
-		drawFlag = false;
-
-		stack = new int[MAX_STACK];
-		register = new int[MAX_REGISTERS];
-		memory = new int[MAX_MEMORY];
-		for (int i = 0; i < font.length; i++) memory[i] = font[i] & 0xFF;
-		for (int i = 0; i < program.length; i++) memory[i + 512] = program[i] & 0xFF;
-		PC = 512;
-		SP = 0;
-		I = 0;
-		delayTimer = 0;
-		soundTimer = 0;
-		keys = new boolean[16];
-		awaitedKeyRegister = 0;
-		awaitingKey = false;
+		//reinitialise our arrays to 0/false
+		for (int i = 0; i < pixels.length; i++)
+			for (int j = 0; j < pixels[i].length; j++) 
+													pixels[i][j] = false;
+		for (int i = 0; i < keys.length; i++) 		keys[i] = false;
+		for (int i = 0; i < stack.length; i++) 		stack[i] = 0;
+		for (int i = 0; i < register.length; i++) 	register[i] = 0;
+		for (int i = 0; i < memory.length; i++) 	memory [i] = 0;
+		
+		//reinitialise our single variables
+		drawFlag 	= false;
+		PC 			= 512;
+		SP 			= 0;
+		I 			= 0;
+		delayTimer 	= 0;
+		soundTimer 	= 0;
+		
+		//load in our font-set (in case the last program overwrote it)
+		for (int i = 0; i < font.length; i++) 		memory[i] 		= font[i] & 0xFF;
+		//load in the main program
+		for (int i = 0; i < program.length; i++) 	memory[i + 512] = program[i] & 0xFF;
 	}
 
 	/**
@@ -81,10 +121,6 @@ public class Chip8 implements KeyController {
 	 * @throws EmulatorException
 	 */
 	public void tick() throws EmulatorException {
-		//if we're awaiting a key, simply return
-		if (awaitingKey) return;
-
-		//otherwise proceed like normal
 		int hi = memory[PC] & 0xFF;
 		int low = memory[PC + 1] & 0xFF;
 		int opcode = (hi << 8) | low;
@@ -95,6 +131,7 @@ public class Chip8 implements KeyController {
 		//reset the drawflag
 		drawFlag = false;
 
+		//we will extract the common elements of the opcode
 		//0xy0 for x/ y
 		//00nn for nn
 		//0nnn for nnn
@@ -133,7 +170,6 @@ public class Chip8 implements KeyController {
 			case 0x5: 
 				register[15] = register[y] > register[x] ? 0 : 1;
 				register[x] -= register[y];
-				//register[15] = register[x] < 0 ? 0 : 1;
 				register[x] &= 0xFF;
 				break;
 			case 0x6: 
@@ -188,48 +224,100 @@ public class Chip8 implements KeyController {
 		}
 	}
 
+	/**
+	 * Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. <p>
+	 * Each row of 8 pixels is read as bit-coded (with the most significant bit of each byte displayed on the left) 
+	 * starting from memory location I; I value doesn't change after the execution of this instruction.<p> 
+	 * VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, 
+	 * and to 0 if that doesn't happen.
+	 * 
+	 * @param x start x coordinate
+	 * @param y start y coordinate
+	 * @param height the height of drawing
+	 */
 	private void draw(int x, int y, int height) {
+		//first set flag to off. It will later be set if a pixel is flipped from on to off
 		register[15] = 0;
+		
 		for (int j = 0; j < height; j++) {
 			int dat = memory[j + I];
 
 			for (int i = 0; i < 8; i++) {
+				//if the bit is 0, we aren't changing this value
 				if ((dat & (0x80 >> i)) == 0) continue;
-
-				int rx = (i + x) % 64;
-				int ry = (j + y) % 32;
-
+				
+				// NOTE: not sure if meant to skip out-of-bounds pixels or modulo them
+				// for the time being, I am ignoring them, as all games seem to function using this mechanism
+				
+				int rx = i + x;
+				int ry = j + y;
+				
+				// ignore them. 
+				if (rx >= WIDTH || ry >= HEIGHT) continue;
+				
+				// modulo version. Causes weird visual disturbances on the Blitz game
+				//rx %= 64;
+				//ry %= 32; 
+				
+				//if the pixel was on, it means we are now unsetting it, and we must set the carry flag
 				if (pixels[rx][ry]) register[15] = 1;
+				//flip the pixel
 				pixels[rx][ry] ^= true;
 			}
 		}
-
+		
+		//set draw flag to show we need to redraw
 		drawFlag = true;
 	}
 
+	/**
+	 * Clears the screen. Sets all elements in the boolean pixel array to false.
+	 */
 	private void clearScreen() {
-		for (int i = 0; i < pixels.length; i++)
-			for (int j = 0; j < pixels[i].length; j++)
+		//iterate over pixel array setting to false
+		for (int i = 0; i < pixels.length; i++) {
+			for (int j = 0; j < pixels[i].length; j++) {
 				pixels[i][j] = false;
+			}
+		}
+			
+		//set draw flag to show we need to redraw
 		drawFlag = true;
 	}
 
-	private void awaitKeyPress(int register) {
-		awaitedKeyRegister = register;
-		awaitingKey = true;
+	/**
+	 * Awaits a key press. If any key is pressed, we have already 'awaited' and we can continue. <br>
+	 * If no key is pressed, we decrease the program counter by 2 to retry the command, thus 'waiting'.
+	 * 
+	 * @param destReg destination register 
+	 * @throws RegisterOutOfBoundsException if destReg is not between 0 and 15 inclusive
+	 */
+	private void awaitKeyPress(int destReg) throws RegisterOutOfBoundsException {
+		if (destReg < 0 || destReg > 15) throw new RegisterOutOfBoundsException("Cannot await on register: " + destReg);
+		
+		for (int i = 0; i < keys.length; i++) {
+			//if a key is pressed, the await succeeded, and we set it and return
+			if (keys[i]) {
+				register[destReg] = 1 << i;
+				return;
+			}
+		}
+
+		//if we had no key pressed, we decrement our pc which causes the instruction to repeat again
+		PC -= 2;
 	}
 
-	private void invalidOpcode(int opcode) {
-		System.out.println("Invalid opcode: " + Integer.toString(opcode, 16).toUpperCase() + " at PC = " + (PC + 2));
-		System.exit(-1);
+	/**
+	 * Throws an <code>UnknownOpcodeException</code> with the given opcode.
+	 * @param opcode the unknown opcode
+	 * @throws UnknownOpcodeException the exception to be thrown
+	 */
+	private void invalidOpcode(int opcode) throws UnknownOpcodeException {
+		throw new UnknownOpcodeException("Invalid opcode: " + Integer.toString(opcode, 16).toUpperCase() + " at PC = " + (PC - 2));
 	}
 
 	@Override
 	public void keyInteracted(int i, boolean pressed) {
-		if (awaitingKey) {
-			register[awaitedKeyRegister] = 1 << i;
-			awaitingKey = false;
-		}
 		keys[i] = pressed;
 	}
 
@@ -250,7 +338,7 @@ public class Chip8 implements KeyController {
 	}
 
 	/**
-	 * Gets the stack pointer (will be between 0 and 15
+	 * Gets the stack pointer (will be between 0 and 15).
 	 * @return the stack pointer
 	 */
 	public int getSP() {
@@ -266,7 +354,7 @@ public class Chip8 implements KeyController {
 	}
 
 	/**
-	 * Returns the chip8 memory. It is a 4096 byte array (stored as ints)
+	 * Returns the chip8 memory. It is a 4096 byte array (stored as ints).
 	 * @return the memory
 	 */
 	public int[] getMemory() {
@@ -298,26 +386,37 @@ public class Chip8 implements KeyController {
 	}
 
 	/**
-	 * Returns the draw flag, which indicates if the emulator needs to be redrawn this cycle.
+	 * Returns the draw flag, which indicates if the emulator needs to be redrawn this cycle. <br>
+	 * <b>Note:</b> this method call does not reset the draw flag.
 	 * @return the draw flag
 	 */
 	public boolean getDrawFlag() {
 		return drawFlag;
 	}
 
+	/**
+	 * Returns the pixel data for the emulator.<br>
+	 * It is a 64 * 32 boolean array. <br>
+	 * A true indicates that pixel is set. False indicates it is not.
+	 * @return the pixel data
+	 */
 	public boolean[][] getPixelData() {
 		return pixels;
 	}
 
 	/**
-	 * Returns the currently held keys (the first 16 bits of this int represent the keys)
+	 * Returns the currently held keys. <br>
+	 * The returned array is of length 16 (to represent the hex keypad).
 	 * @return the keys
 	 */
 	public boolean[] getKeys() {
 		return keys;
 	}
 
-	/** This is the fontset for the emulator */
+	/** 
+	 * This is the font-set for the emulator of characters 0-9 A-F (hex charas).
+	 * Each 5 shorts is a different character, designated by the adjacent comment.
+	 */
 	private short[] font = { 
 			0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
 			0x20, 0x60, 0x20, 0x20, 0x70, // 1

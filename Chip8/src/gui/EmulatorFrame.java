@@ -47,12 +47,10 @@ public class EmulatorFrame extends JFrame {
 	 */
 	private void initComponents() {
 		emulator = new Chip8();
-		panel = new DisplayPanel();
+		panel = new DisplayPanel(emulator);
 		registerPanel = new EmulatorInfoPanel(emulator);
 		
 		controller = new Controller(this, emulator, panel, registerPanel);
-		
-		panel.registerButtonController(emulator);
 	}
 	
 	/**
