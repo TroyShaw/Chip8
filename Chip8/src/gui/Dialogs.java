@@ -1,6 +1,16 @@
 package gui;
 
+import java.awt.Desktop;
+import java.awt.Font;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+
+import javax.swing.JEditorPane;
 import javax.swing.JOptionPane;
+import javax.swing.UIManager;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
 
 
 /**
@@ -39,11 +49,48 @@ public class Dialogs {
 	 * Displays the programs 'about'.
 	 */
 	public static void showAbout() {
-		String about = 	"Troyboy Chip8 emulator\nVersion 1.00\n\n" +
-				"Troy Shaw\ntroyshw@gmail.com\n\n" +
-				"This software is free and open source.\n" +
-				"Feel free to distribute it to your friends!";
+		//the font is dictated by the current JOptionPane
+		Font font = UIManager.getDefaults().getFont("OptionPane.font");
+		StringBuffer style = new StringBuffer("font-family:" + font.getFamily() + ";");
+		style.append("font-weight:" + (font.isBold() ? "bold" : "normal") + ";");
+		style.append("font-size:" + font.getSize() + "pt;");
 
-		JOptionPane.showMessageDialog(null, about);
+		// html content
+		JEditorPane ep = new JEditorPane("text/html", "<html><body style=\"" + style + "\">" + 
+				"Troyboy Chip8 emulator<br>Version 1.00<p>" +
+				"Troy Shaw<br>troyshw@gmail.com<p>" +
+				"This software is free and open source.<br>" +
+				"Check <a href=\"https://github.com/ArreatsChozen/Chip8.git\">GitHub</a> for the latest version.<br>" + 
+				"Feel free to distribute it to your friends! </body></html>");
+
+		// handle link events
+		ep.addHyperlinkListener(new HyperlinkListener() {
+			@Override
+			public void hyperlinkUpdate(HyperlinkEvent e) {
+				if (e.getEventType().equals(HyperlinkEvent.EventType.ACTIVATED))
+					open(e.getURL());
+			}
+		});
+
+		ep.setEditable(false);
+		ep.setBackground(UIManager.getColor("Panel.background"));
+		// show
+		JOptionPane.showMessageDialog(null, ep);
+	}
+
+	/**
+	 * Opens the given URL in the computers default browser. <br>
+	 * Displays an error message if the URL is malformed, etc.
+	 * @param url the url to navigate to
+	 */
+	private static void open(URL url) {
+		if (Desktop.isDesktopSupported()) {
+			try {
+				Desktop.getDesktop().browse(url.toURI());
+			} catch (IOException | URISyntaxException e) { 
+				Dialogs.showFailureDialog("URL failed to load");
+			}
+		}
+		//I don't even think this program can be run without a desktop
 	}
 }
