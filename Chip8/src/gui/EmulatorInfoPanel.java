@@ -66,6 +66,14 @@ public class EmulatorInfoPanel extends JPanel {
 		m.setValueAt(Integer.toString(emulator.getDelayTimer()), 19, 1);
 		m.setValueAt(Integer.toString(emulator.getSoundTimer()), 20,1);
 		//String n = String.format("%16d", Integer.parseInt(Integer.toBinaryString(emulator.getKeys())));
-		m.setValueAt(Integer.toBinaryString(emulator.getKeys()), 21, 1);
+		m.setValueAt(boolString(emulator.getKeys()), 21, 1);
+	}
+	
+	private String boolString(boolean[] info) {
+		String s = "";
+		
+		for (boolean b : info) s += b ? 1 : 0;
+		
+		return s;
 	}
 }

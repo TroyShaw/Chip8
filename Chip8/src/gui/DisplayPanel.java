@@ -15,7 +15,6 @@ import javax.swing.JPanel;
 
 import emulator.Key;
 import emulator.Chip8;
-import emulator.Drawer;
 import emulator.KeyController;
 
 /**
@@ -23,7 +22,7 @@ import emulator.KeyController;
  *
  * @author Troy Shaw
  */
-public class DisplayPanel extends JPanel implements Drawer {
+public class DisplayPanel extends JPanel {
 
 	private static Color DEFAULT_COLOR = Color.black;
 
@@ -32,8 +31,6 @@ public class DisplayPanel extends JPanel implements Drawer {
 	private KeyController buttonController;
 	private Map<Integer, Integer> buttonMapping;
 	private BufferedImage image;
-
-	private boolean[][] display = new boolean[64][32]; 
 
 	public DisplayPanel() {
 		resizeDisplay(scale);
@@ -56,20 +53,7 @@ public class DisplayPanel extends JPanel implements Drawer {
 	private void registerKeyListener() {
 		buttonMapping = new HashMap<Integer, Integer>();
 
-		int[] keys = {
-				KeyEvent.VK_NUMPAD1, KeyEvent.VK_NUMPAD2, KeyEvent.VK_NUMPAD3,
-				KeyEvent.VK_NUMPAD4, KeyEvent.VK_NUMPAD5, KeyEvent.VK_NUMPAD5,
-				KeyEvent.VK_NUMPAD6, KeyEvent.VK_NUMPAD7, KeyEvent.VK_NUMPAD8,
-				KeyEvent.VK_NUMPAD9, KeyEvent.VK_NUMPAD0, KeyEvent.VK_SEPARATOR,
-				KeyEvent.VK_DIVIDE, KeyEvent.VK_MULTIPLY, KeyEvent.VK_MINUS,
-				KeyEvent.VK_ENTER};
-		for (int i : keys) buttonMapping.put(i, 1 << i);
-//		buttonMapping.put(KeyEvent.VK_UP, Key.up);
-//		buttonMapping.put(KeyEvent.VK_DOWN, Key.down);
-//		buttonMapping.put(KeyEvent.VK_LEFT, Key.left);
-//		buttonMapping.put(KeyEvent.VK_RIGHT, Key.right);
-//		buttonMapping.put(KeyEvent.VK_A, Key.a);
-//		buttonMapping.put(KeyEvent.VK_B, Key.b);
+		for (Key k : Key.values()) buttonMapping.put(k.getCode(), k.getPosition());
 
 		KeyListener kl = new KeyAdapter() {
 			@Override
@@ -100,52 +84,28 @@ public class DisplayPanel extends JPanel implements Drawer {
 		g.drawImage(image, 0, 0, null);
 	}
 
-	@Override
-	public boolean draw(int x, int y, int length, int I, int[] data) {
+	public void draw(boolean[][] data) {
+		//we iterate over boolean data
+		for (int i = 0; i < data.length; i++) {
+			for (int j = 0; j < data[i].length; j++) {
 
-		System.out.println("x: " + x + ", y: " + y);
-		boolean conflict = false;
-
-		for (int jr = 0; jr < length; jr++) {
-			int j = jr % 32;
-			int jy = (jr + y) % 32;
-
-			int dat = data[j + I];
-
-			for (int ir = 0; ir < 8; ir++) {
-				int i = ir % 64;
-				int ix = (ir + x) % 64;
-
-				boolean newP = (dat & (1 << (7 - i))) != 0;
-				boolean oldP = display[ix][jy];
-
-				if (!conflict && oldP && !newP) conflict = true;
-				//conflict = conflict || (oldP != newP);
-				display[ix][jy] = newP ^ oldP;
-
-				for (int x1 = i * scale; x1 < i * scale + scale; x1++) {
-					for (int y1 = j * scale; y1 < j * scale + scale; y1++) {
-						image.setRGB((x1 + x * scale) % (scale * Chip8.WIDTH), (y1 + y * scale) % (scale * Chip8.HEIGHT), newP ^ oldP ? Color.white.getRGB() : Color.black.getRGB());
+				//then we iterate over appropriate pixels for our current scale
+				for (int x = i * scale; x < i * scale + scale; x++) {
+					for (int y = j * scale; y < j * scale + scale; y++) {
+						Color c = data[i][j] ? Color.white : Color.black;
+						image.setRGB(x, y, c.getRGB());
 					}
 				}
 			}
 		}
-
 		repaint();
-
-		return conflict;
 	}
 
 	public void paintAll() {
 		repaint();
 	}
 
-	@Override
 	public void clear() {
-		for (int i = 0; i < display.length; i++) 
-			for (int j = 0; j < display[i].length; j++)
-				display[i][j] = false;
-
 		Graphics2D g = image.createGraphics();
 		g.setColor(Color.black);
 		g.fillRect(0, 0, image.getWidth(), image.getWidth());

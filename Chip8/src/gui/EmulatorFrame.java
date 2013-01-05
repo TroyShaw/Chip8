@@ -52,8 +52,6 @@ public class EmulatorFrame extends JFrame {
 		
 		controller = new Controller(this, emulator, panel, registerPanel);
 		
-		emulator.registerDrawer(panel);
-		
 		panel.registerButtonController(emulator);
 	}
 	

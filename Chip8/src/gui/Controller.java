@@ -91,6 +91,7 @@ public class Controller {
 						e1.printStackTrace();
 					}
 					infoPanel.update();
+					if (emulator.getDrawFlag()) panel.draw(emulator.getPixelData());
 					try {
 						Thread.sleep(1);
 					} catch (InterruptedException e) {

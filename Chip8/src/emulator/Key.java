@@ -1,20 +1,45 @@
 package emulator;
 
+import java.awt.event.KeyEvent;
+
 public enum Key {
-	left	(1 << 0),
-	right	(1 << 1),
-	up		(1 << 2),
-	down	(1 << 3),
-	a		(1 << 4),
-	b		(1 << 5),
-	c		(1 << 6),
-	d 		(1 << 7),
-	e		(1 << 8),
-	f		(1 << 9);
+	x0	(0x0, KeyEvent.VK_Q),
+	x1	(0x1, KeyEvent.VK_W),
+	x2	(0x2, KeyEvent.VK_E),
+	x3	(0x3, KeyEvent.VK_A),
+	x4	(0x4, KeyEvent.VK_S),
+	x5	(0x5, KeyEvent.VK_D),
+	x6	(0x6, KeyEvent.VK_Z),
+	x7	(0x7, KeyEvent.VK_X),
+	x8	(0x8, KeyEvent.VK_C),
+	x9	(0x9, KeyEvent.VK_1),
+	xA	(0xA, KeyEvent.VK_2),
+	xB	(0xB, KeyEvent.VK_3),
+	xC	(0xC, KeyEvent.VK_4),
+	xD	(0xD, KeyEvent.VK_R),
+	xE	(0xE, KeyEvent.VK_F),
+	xF	(0xF, KeyEvent.VK_V);
 	
-	public final int code;
+	private final int code, position;
 	
-	Key(int code) {
+	Key(int position, int code) {
+		this.position = position;
 		this.code = code;
+	}
+	
+	/**
+	 * Returns the keycode associated with this key.
+	 * @return the keycode
+	 */
+	public int getCode() {
+		return code;
+	}
+	
+	/**
+	 * Returns the position associated with this key (the hex key value).
+	 * @return the value
+	 */
+	public int getPosition() {
+		return position;
 	}
 }
