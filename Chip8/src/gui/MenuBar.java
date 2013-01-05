@@ -18,6 +18,7 @@ import javax.swing.KeyStroke;
 /**
  * Menubar for the emulator program. 
  * Has various ways to control the game, including load, restart, change screen size, etc.
+ * 
  * @author Troy Shaw
  */
 public class MenuBar extends JMenuBar implements ActionListener {
@@ -105,8 +106,9 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		optionsMenu.add(size);
 		optionsMenu.addSeparator();
 		optionsMenu.add(mute);
-		optionsMenu.addSeparator();
-		optionsMenu.add(controls);
+		//TODO add a listener and some sort of menu when the controls menu-item is selected.
+		//optionsMenu.addSeparator();
+		//optionsMenu.add(controls);
 		
 		for (JRadioButtonMenuItem button : scaleButtons) size.add(button);
 		
@@ -128,10 +130,7 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		} else if (o == load) {
 			JFileChooser chooser = new JFileChooser("C:\\Users\\Troy Shaw\\Downloads\\chp8_220\\CHIP8\\GAMES");
 			int result = chooser.showOpenDialog(null);
-			
-			if(result == JFileChooser.APPROVE_OPTION) {
-				controller.startNewGame(chooser.getSelectedFile());
-			}
+			if(result == JFileChooser.APPROVE_OPTION) controller.startNewGame(chooser.getSelectedFile());
 		} else if (o == exit) {
 			System.exit(0);
 		} else if (o == help) {
@@ -143,8 +142,8 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		} else if (o == mute) {
 			Controller.SOUND_ENABLED ^= true;
 		} else if (o instanceof JRadioButtonMenuItem) {
-			//we 'fall-through' here, the only JRadioButtonMenuItem's left are scale ones.
-			controller.resizeDisplay((int) Math.pow(2, scaleButtons.indexOf(o)));
+			int i = scaleButtons.indexOf(o);
+			if (i != -1) controller.resizeDisplay((int) Math.pow(2, i));
 		}
 	}
 }
