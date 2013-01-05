@@ -6,12 +6,11 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.TableModel;
-import javax.xml.ws.handler.MessageContext.Scope;
 
 import emulator.Chip8;
 
 /**
- * Panel contains info of the various registers and info about the current state of the emulator.
+ * Panel contains info of the various registers and info about the current state of the emulator.<br>
  *
  * @author Troy Shaw
  */
