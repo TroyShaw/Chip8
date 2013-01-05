@@ -13,6 +13,7 @@ public class Controller {
 
 	//this needs to be 2^n, where n is a member of {0,1,2,3}
 	public final static int DEFAULT_SCALE = 8;
+	public static boolean SOUND_ENABLED = true;
 
 	private Chip8 emulator;
 	private DisplayPanel panel;
@@ -30,7 +31,7 @@ public class Controller {
 	}
 
 	/**
-	 * Resizes and immediately repacks the graphical display for the game.
+	 * Resizes, repaints, and repacks the graphical display for the game.
 	 *
 	 * @param scale the scaler 
 	 */

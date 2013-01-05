@@ -7,6 +7,7 @@ import java.util.TimerTask;
 import emulator.exception.EmulatorException;
 import emulator.exception.RegisterOutOfBoundsException;
 import emulator.exception.UnknownOpcodeException;
+import gui.Controller;
 
 /**
  * The Chip8 emulator.
@@ -68,7 +69,7 @@ public class Chip8 implements KeyController {
 			@Override
 			public void run() {
 				//if sound is 1, it will next be decremented to 0, so we'll make a beep sound
-				if (soundTimer == 1) Toolkit.getDefaultToolkit().beep();
+				if (soundTimer == 1 && Controller.SOUND_ENABLED) Toolkit.getDefaultToolkit().beep();
 				delayTimer = Math.max(delayTimer - 1, 0);
 				soundTimer = Math.max(soundTimer - 1, 0);
 

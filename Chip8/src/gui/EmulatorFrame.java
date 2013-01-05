@@ -4,14 +4,13 @@ import java.awt.Dimension;
 import java.awt.Toolkit;
 
 import javax.swing.JFrame;
-import javax.swing.JPanel;
 import javax.swing.UIManager;
 
 import emulator.Chip8;
 
 /**
  * The main frame that is displayed on-screen.<p>
- * It contains a menubar, the emulator display, and a table containing the various registers.
+ * It contains a menubar and the emulator display.
  *
  * @author Troy Shaw
  */
@@ -25,7 +24,6 @@ public class EmulatorFrame extends JFrame {
 	//The gui elements
 	private DisplayPanel panel;
 	private EmulatorInfoPanel registerPanel;
-	private MenuBar menuBar;
 	
 	/**
 	 * Constructs a new <code>EmulatorFrame</code> with which an emulator is run.
@@ -57,19 +55,14 @@ public class EmulatorFrame extends JFrame {
 	 * Initialises the menubar for this frame.
 	 */
 	private void initMenubar() {
-		menuBar = new MenuBar(controller);
-		
-		setJMenuBar(menuBar);
+		setJMenuBar(new MenuBar(controller));
 	}
 	
 	/**
 	 * Sets the layout, and adds, the various panels to this frame.
 	 */
 	private void setupLayout() {
-		JPanel masterPanel = new JPanel();
-		masterPanel.add(panel);
-		masterPanel.add(registerPanel);
-		getContentPane().add(masterPanel);
+		getContentPane().add(panel);
 	}
 	
 	/**
