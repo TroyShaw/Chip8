@@ -29,7 +29,7 @@ public class EmulatorFrame extends JFrame {
 	 * Constructs a new <code>EmulatorFrame</code> with which an emulator is run.
 	 */
 	public EmulatorFrame() {
-		super("Troyboy Gameboy Emulator");
+		super("Troyboy Chip8 Emulator");
 		
 		setNativeLAndF();
 		initComponents();
@@ -69,6 +69,7 @@ public class EmulatorFrame extends JFrame {
 	 * Initialises the frames settings, such as exit conditions, etc
 	 */
 	private void initFrame() {
+		setResizable(false);
 		pack();
 		center();
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
