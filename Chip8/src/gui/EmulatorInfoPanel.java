@@ -16,6 +16,9 @@ import emulator.Chip8;
  */
 public class EmulatorInfoPanel extends JPanel {
 
+	// NOTE: 	this is currently not being used in the program
+	// 			it needs to be updated to look nicer, and be more informative
+	
 	//there are 16 registers, V0-VF
 	//there is the I flag
 	//there is the PC
