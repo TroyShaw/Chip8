@@ -12,8 +12,9 @@ import fileio.Loader;
 public class Controller {
 
 	//this needs to be 2^n, where n is a member of {0,1,2,3}
-	public final static int DEFAULT_SCALE = 8;
+	public final static int DEFAULT_SCALE = 4;
 	public static boolean SOUND_ENABLED = true;
+	public static boolean PAUSED = false;
 
 	private Chip8 emulator;
 	private DisplayPanel panel;
@@ -56,7 +57,7 @@ public class Controller {
 			} catch (InterruptedException e) {
 				//ignore
 			}
-		
+
 		startNewGame(program);
 	}
 
@@ -76,24 +77,26 @@ public class Controller {
 
 	private void startNewGame(byte[] program) {
 		this.program = program;
-		
+
 		hasQuit = false;
 		panel.clear();
 		emulator.loadProgram(program);
-		
+
 		currentThread = new Thread() {
 			@Override
 			public void run() {
 				while (!hasQuit) {
-					try {
-						emulator.tick();
-					} catch (EmulatorException e1) {
-						// TODO something here
+					if (!PAUSED) {
+						try {
+							emulator.tick();
+							infoPanel.update();
+							if (emulator.getDrawFlag()) panel.draw(emulator.getPixelData());
+						} catch (EmulatorException e1) {
+							// TODO something here
+						}
 					}
-					
-					infoPanel.update();
-					if (emulator.getDrawFlag()) panel.draw(emulator.getPixelData());
-					
+
+
 					try {
 						//we need a sleep (even modest) so that key detection works properly
 						Thread.sleep(1);
@@ -103,7 +106,7 @@ public class Controller {
 				}
 			}
 		};
-		
+
 		currentThread.start();
 	}
 }
