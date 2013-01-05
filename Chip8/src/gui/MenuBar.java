@@ -2,6 +2,8 @@ package gui;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +13,7 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JRadioButtonMenuItem;
+import javax.swing.KeyStroke;
 
 /**
  * Menubar for the emulator program. 
@@ -26,7 +29,8 @@ public class MenuBar extends JMenuBar implements ActionListener {
 	private List<JRadioButtonMenuItem> scaleButtons;
 	
 	private JMenuItem reset, load, exit;
-	private JMenuItem mute, volume, controls;
+	private JMenuItem controls;
+	private JRadioButtonMenuItem mute, pause;
 	private JMenuItem help, about;
 	
 	private Controller controller;
@@ -45,13 +49,17 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		optionsMenu = new JMenu("Options");
 		helpMenu = new JMenu("Help");
 		
-		reset = new JMenuItem("Reset");
+		fileMenu.setMnemonic(KeyEvent.VK_F);
+		optionsMenu.setMnemonic(KeyEvent.VK_O);
+		helpMenu.setMnemonic(KeyEvent.VK_H);
+		
 		load = new JMenuItem("Load...");
+		pause = new JRadioButtonMenuItem("Pause", false);
+		reset = new JMenuItem("Reset");
 		exit = new JMenuItem("Exit");
 		
 		size = new JMenu("Screen size");
-		mute = new JMenuItem("Mute");
-		volume = new JMenuItem("Volume");
+		mute = new JRadioButtonMenuItem("Mute", !Controller.SOUND_ENABLED);
 		controls = new JMenuItem("Controls");
 		
 		help = new JMenuItem("Help");
@@ -67,14 +75,21 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		ButtonGroup b = new ButtonGroup();
 		for (JRadioButtonMenuItem button : scaleButtons) b.add(button);
 		
-		reset.addActionListener(this);
 		load.addActionListener(this);
+		pause.addActionListener(this);
+		reset.addActionListener(this);
 		exit.addActionListener(this);
+		
+		load.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK));
+		pause.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.CTRL_DOWN_MASK));
+		reset.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK));
+		exit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK));
+		
+		mute.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, InputEvent.CTRL_DOWN_MASK));
 		
 		for (JRadioButtonMenuItem button : scaleButtons) button.addActionListener(this);
 		
 		mute.addActionListener(this);
-		volume.addActionListener(this);
 		controls.addActionListener(this);
 		
 		help.addActionListener(this);
@@ -82,6 +97,7 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		
 		fileMenu.add(load);
 		fileMenu.addSeparator();
+		fileMenu.add(pause);
 		fileMenu.add(reset);
 		fileMenu.addSeparator();
 		fileMenu.add(exit);
@@ -89,7 +105,6 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		optionsMenu.add(size);
 		optionsMenu.addSeparator();
 		optionsMenu.add(mute);
-		optionsMenu.add(volume);
 		optionsMenu.addSeparator();
 		optionsMenu.add(controls);
 		
@@ -120,10 +135,15 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		} else if (o == exit) {
 			System.exit(0);
 		} else if (o == help) {
-			// TODO add
+			Dialogs.showHelp();
 		} else if (o == about) {
-			// TODO add
+			Dialogs.showAbout();
+		} else if (o == pause) {
+			Controller.PAUSED ^= true;
+		} else if (o == mute) {
+			Controller.SOUND_ENABLED ^= true;
 		} else if (o instanceof JRadioButtonMenuItem) {
+			//we 'fall-through' here, the only JRadioButtonMenuItem's left are scale ones.
 			controller.resizeDisplay((int) Math.pow(2, scaleButtons.indexOf(o)));
 		}
 	}
