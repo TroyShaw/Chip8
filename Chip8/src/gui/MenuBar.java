@@ -24,18 +24,18 @@ import javax.swing.KeyStroke;
 public class MenuBar extends JMenuBar implements ActionListener {
 
 	private JMenu fileMenu, optionsMenu, helpMenu;
-	
+
 	private JMenu size;
-	
+
 	private List<JRadioButtonMenuItem> scaleButtons;
-	
+
 	private JMenuItem reset, load, exit;
 	private JMenuItem controls;
 	private JRadioButtonMenuItem mute, pause;
 	private JMenuItem help, about;
-	
+
 	private Controller controller;
-	
+
 	/**
 	 * Instantiates a new <code>MenuBar</code> with the given controller.<br>
 	 * The controller will have methods called on it asynchronously as the buttons are clicked. 
@@ -45,86 +45,86 @@ public class MenuBar extends JMenuBar implements ActionListener {
 	public MenuBar(Controller controller) {
 		if (controller == null) throw new NullPointerException("controller cannot be null");
 		this.controller = controller;
-		
+
 		fileMenu = new JMenu("File");
 		optionsMenu = new JMenu("Options");
 		helpMenu = new JMenu("Help");
-		
+
 		fileMenu.setMnemonic(KeyEvent.VK_F);
 		optionsMenu.setMnemonic(KeyEvent.VK_O);
 		helpMenu.setMnemonic(KeyEvent.VK_H);
-		
+
 		load = new JMenuItem("Load...");
 		pause = new JRadioButtonMenuItem("Pause", false);
 		reset = new JMenuItem("Reset");
 		exit = new JMenuItem("Exit");
-		
+
 		size = new JMenu("Screen size");
 		mute = new JRadioButtonMenuItem("Mute", !Controller.SOUND_ENABLED);
 		controls = new JMenuItem("Controls");
-		
+
 		help = new JMenuItem("Help");
 		about = new JMenuItem("About");
-		
+
 		scaleButtons = new ArrayList<JRadioButtonMenuItem>();
 		for (int i = 0; i < 4; i++) {
 			int val = (int) Math.pow(2, i);
 			//if the value is equal to the default scale, we 'tick' this radio button
 			scaleButtons.add(new JRadioButtonMenuItem(val + "x", val == Controller.DEFAULT_SCALE));
 		}
-		
+
 		ButtonGroup b = new ButtonGroup();
 		for (JRadioButtonMenuItem button : scaleButtons) b.add(button);
-		
+
 		load.addActionListener(this);
 		pause.addActionListener(this);
 		reset.addActionListener(this);
 		exit.addActionListener(this);
-		
+
 		load.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK));
 		pause.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.CTRL_DOWN_MASK));
 		reset.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK));
 		exit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK));
-		
+
 		mute.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, InputEvent.CTRL_DOWN_MASK));
-		
+
 		for (JRadioButtonMenuItem button : scaleButtons) button.addActionListener(this);
-		
+
 		mute.addActionListener(this);
 		controls.addActionListener(this);
-		
+
 		help.addActionListener(this);
 		about.addActionListener(this);
-		
+
 		fileMenu.add(load);
 		fileMenu.addSeparator();
 		fileMenu.add(pause);
 		fileMenu.add(reset);
 		fileMenu.addSeparator();
 		fileMenu.add(exit);
-		
+
 		optionsMenu.add(size);
 		optionsMenu.addSeparator();
 		optionsMenu.add(mute);
 		//TODO add a listener and some sort of menu when the controls menu-item is selected.
 		//optionsMenu.addSeparator();
 		//optionsMenu.add(controls);
-		
+
 		for (JRadioButtonMenuItem button : scaleButtons) size.add(button);
-		
+
 		helpMenu.add(help);
 		helpMenu.addSeparator();
 		helpMenu.add(about);
-		
+
 		add(fileMenu);
 		add(optionsMenu);
 		add(helpMenu);
 	}
-	
+
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		Object o = e.getSource();
-		
+
 		if (o == reset) {
 			controller.reset();
 		} else if (o == load) {
