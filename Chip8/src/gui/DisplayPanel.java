@@ -15,6 +15,7 @@ import javax.swing.JPanel;
 
 import emulator.Key;
 import emulator.Chip8;
+import emulator.exception.InvalidKeyException;
 
 /**
  * The panel that displays the game currently being played.
@@ -27,16 +28,17 @@ public class DisplayPanel extends JPanel {
 	//		and they both alter the same image. 
 	//		It is possible to change our image to a smaller one while setting pixels, thus drawing out-of-bounds on the new one.
 	
-	private static Color DEFAULT_COLOR = Color.black;
-
+	private static Color PIXEL_OFF_COLOR = Color.black;
+	private static Color PIXEL_ON_COLOR  = Color.white;
 	private int scale = Controller.DEFAULT_SCALE;
 
 	private BufferedImage image;
 	private Chip8 chip8;
 
 	/**
-	 * Creates a new <code>DisplayPanel</code> initialised with the given <code>KeyController</code>
-	 * @param keyController
+	 * Creates a new <code>DisplayPanel</code> initialised with the given <code>Chip8</code> emulator.
+	 * 
+	 * @param chip8 the emulator
 	 */
 	public DisplayPanel(Chip8 chip8) {
 		this.chip8 = chip8;
@@ -76,7 +78,14 @@ public class DisplayPanel extends JPanel {
 
 			private void interacted(int val, boolean pushed) {
 				Integer b = buttonMapping.get(val);
-				if (b != null) chip8.keyInteracted(b, pushed);
+				if (b != null)
+					try {
+						chip8.keyInteracted(b, pushed);
+					} catch (InvalidKeyException e) {
+						//this shouldn't happen
+						Dialogs.showFailureDialog("An internal error has occured in the emulator.\nAn invalid key was pressed.");
+						System.exit(1);
+					}
 			}
 		};
 
@@ -85,14 +94,18 @@ public class DisplayPanel extends JPanel {
 
 	@Override
 	public void paintComponent(Graphics g) {
+		//we just paint the current image
 		g.drawImage(image, 0, 0, null);
 	}
 
 	/**
-	 * Draws the contents of data to the image. 
+	 * Draws the contents of <code>data</code> to the image. 
+	 * 
 	 * @param data the pixel data we are drawing
 	 */
 	public synchronized void draw(boolean[][] data) {
+		//see note at start of class for why this method is synchronized
+		
 		//we iterate over boolean data
 		for (int i = 0; i < data.length; i++) {
 			for (int j = 0; j < data[i].length; j++) {
@@ -100,7 +113,7 @@ public class DisplayPanel extends JPanel {
 				//then we iterate over appropriate pixels for our current scale
 				for (int x = i * scale; x < i * scale + scale; x++) {
 					for (int y = j * scale; y < j * scale + scale; y++) {
-						Color c = data[i][j] ? Color.white : Color.black;
+						Color c = data[i][j] ? PIXEL_ON_COLOR : PIXEL_OFF_COLOR;
 						image.setRGB(x, y, c.getRGB());
 					}
 				}
@@ -122,7 +135,7 @@ public class DisplayPanel extends JPanel {
 	 */
 	public void clear() {
 		Graphics2D g = image.createGraphics();
-		g.setColor(DEFAULT_COLOR);
+		g.setColor(PIXEL_OFF_COLOR);
 		g.fillRect(0, 0, image.getWidth(), image.getWidth());
 
 		repaint();
@@ -133,6 +146,8 @@ public class DisplayPanel extends JPanel {
 	 * @param scale
 	 */
 	public synchronized void resizeDisplay(int scale) {
+		//see note at start of class for why this method is synchronized
+		
 		this.scale = scale;
 		
 		//resize our panel
