@@ -23,17 +23,26 @@ import javax.swing.KeyStroke;
  */
 public class MenuBar extends JMenuBar implements ActionListener {
 
-	private JMenu fileMenu, optionsMenu, helpMenu;
+	private static String USER_DIR = System.getProperty("user.home");
 
+	//for my own personal testing
+	@SuppressWarnings("unused")
+	private static String MY_DIR = "C:\\Users\\Troy Shaw\\Downloads\\chp8_220\\CHIP8\\GAMES";
+	
+	//headers
+	private JMenu fileMenu, optionsMenu, helpMenu;
 	private JMenu size;
 
+	//we use position in this list to know what scale we want
 	private List<JRadioButtonMenuItem> scaleButtons;
 
+	//menu items
 	private JMenuItem reset, load, exit;
 	private JMenuItem controls;
 	private JRadioButtonMenuItem mute, pause;
 	private JMenuItem help, about;
 
+	//the controller we send events to
 	private Controller controller;
 
 	/**
@@ -128,7 +137,7 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		if (o == reset) {
 			controller.reset();
 		} else if (o == load) {
-			JFileChooser chooser = new JFileChooser("C:\\Users\\Troy Shaw\\Downloads\\chp8_220\\CHIP8\\GAMES");
+			JFileChooser chooser = new JFileChooser(USER_DIR);
 			int result = chooser.showOpenDialog(null);
 			if(result == JFileChooser.APPROVE_OPTION) controller.startNewGame(chooser.getSelectedFile());
 		} else if (o == exit) {
