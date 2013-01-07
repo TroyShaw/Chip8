@@ -1,11 +1,16 @@
 package emulator;
 
 import java.awt.Toolkit;
+import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import emulator.exception.EmulatorException;
+import emulator.exception.InvalidKeyException;
+import emulator.exception.MemoryOutOfBoundsException;
 import emulator.exception.RegisterOutOfBoundsException;
+import emulator.exception.StackOverflowException;
+import emulator.exception.StackUnderflowException;
 import emulator.exception.UnknownOpcodeException;
 import gui.Controller;
 
@@ -62,7 +67,7 @@ public class Chip8 implements KeyController {
 		stack 		= new int[MAX_STACK];
 		register 	= new int[MAX_REGISTERS];
 		memory 		= new int[MAX_MEMORY];
-		
+
 		//make our timer which will constantly count down at 60hz, decrementing the two counters
 		Timer timer = new Timer(true);
 		TimerTask task = new TimerTask() {
@@ -88,20 +93,20 @@ public class Chip8 implements KeyController {
 	 * Loads the program into memory and reinitialises variables. <br>
 	 * The program cannot be null, and cannot have length greater than 3584 bytes (4096 - 512).
 	 * @param program the program
+	 * @throws IllegalArgumentException if program is more than 3584 bytes
 	 */
 	public void loadProgram(byte[] program) {
 		if (program == null) throw new NullPointerException("program cannot be null");
 		if (program.length > 3584) throw new IllegalArgumentException("program cannot be longer than 3584 bytes");
 
 		//reinitialise our arrays to 0/false
-		for (int i = 0; i < pixels.length; i++)
-			for (int j = 0; j < pixels[i].length; j++) 
-													pixels[i][j] = false;
-		for (int i = 0; i < keys.length; i++) 		keys[i] = false;
-		for (int i = 0; i < stack.length; i++) 		stack[i] = 0;
-		for (int i = 0; i < register.length; i++) 	register[i] = 0;
-		for (int i = 0; i < memory.length; i++) 	memory [i] = 0;
-		
+		for (int i = 0; i < pixels.length; i++) 
+			Arrays.fill(pixels[i], false);
+		Arrays.fill(keys, false);
+		Arrays.fill(stack, 0);
+		Arrays.fill(register, 0);
+		Arrays.fill(memory, 0);
+
 		//reinitialise our single variables
 		drawFlag 	= false;
 		PC 			= 512;
@@ -109,7 +114,7 @@ public class Chip8 implements KeyController {
 		I 			= 0;
 		delayTimer 	= 0;
 		soundTimer 	= 0;
-		
+
 		//load in our font-set (in case the last program overwrote it)
 		for (int i = 0; i < font.length; i++) 		memory[i] 		= font[i] & 0xFF;
 		//load in the main program
@@ -122,12 +127,14 @@ public class Chip8 implements KeyController {
 	 * @throws EmulatorException
 	 */
 	public void tick() throws EmulatorException {
+		//pc + 1 since opcode is 2 bytes wide
+		if (PC + 1 >= MAX_MEMORY || PC < 0) 
+			throw new MemoryOutOfBoundsException("Memory-out-of-bounds reading opcode at PC = " + PC);
+
 		int hi = memory[PC] & 0xFF;
 		int low = memory[PC + 1] & 0xFF;
 		int opcode = (hi << 8) | low;
 		PC += 2;
-
-		System.out.println("Executing opcode: " + Integer.toString(opcode, 16).toUpperCase() + " at PC = " + (PC - 2));
 
 		//reset the drawflag
 		drawFlag = false;
@@ -142,82 +149,149 @@ public class Chip8 implements KeyController {
 		int nn = low;
 		int nnn = (x << 8) | low;
 
-		switch (hi >> 4) {
+		switch (hi >> 4) {	//switch over most significant bit of opcode
 		case 0x0:
 			switch (low) {
-			case 0xE0: clearScreen();		break;
-			case 0xEE: PC = stack[--SP];	break;
+			case 0xE0:	// 00E0, clear screen
+				clearScreen();		
+				break;
+			case 0xEE:	// 00E0, return from subroutine
+				if (SP - 1 < 0) throw new StackUnderflowException();
+				PC = stack[--SP];	
+				break;
 			default: invalidOpcode(opcode);
 			}
 			break;
-		case 0x1: PC = nnn;		 								break;
-		case 0x2: stack[SP++] = PC; PC = nnn;					break;
-		case 0x3: if (register[x] == nn) PC += 2;				break;
-		case 0x4: if (register[x] != nn) PC += 2;				break;
-		case 0x5: if (register[x] == register[y]) PC += 2;		break;
-		case 0x6: register[x] = nn;								break;
-		case 0x7: register[x] = (register[x] + nn) & 0xFF;		break;
+		case 0x1:	// 1NNN, jump to address NNN
+			PC = nnn;
+			break;
+		case 0x2: 	// 2NNN, call subroutine at NNN
+			if (SP >= 16) throw new StackOverflowException();
+			stack[SP++] = PC; 
+			PC = nnn;					
+			break;
+		case 0x3: 	// 3XNN, skip next instruction if VX equals NN
+			if (register[x] == nn) 
+				PC += 2;
+			break;
+		case 0x4: 	// 4XNN, skip next instruction if VX doesn't equal NN
+			if (register[x] != nn) 
+				PC += 2;
+			break;
+		case 0x5: 	// 5XY0, skip next instruction if VX equals VY
+			if (register[x] == register[y]) 
+				PC += 2;
+			break;
+		case 0x6: 	// 6XNN, sets VX to NN
+			register[x] = nn;
+			break;
+		case 0x7: 	// 7XNN, adds NN to VX
+			register[x] = (register[x] + nn) & 0xFF;
+			break;
 		case 0x8: 
 			switch(low & 0xF) {
-			case 0x0: register[x]  = register[y];				break;
-			case 0x1: register[x] |= register[y];				break;
-			case 0x2: register[x] &= register[y];				break;
-			case 0x3: register[x] = (register[x] ^ register[y]) & 0xFF;		break;
-			case 0x4: 
+			case 0x0: 	// 8XY0, sets VX to VY
+				register[x] = register[y];
+				break;
+			case 0x1: 	// 8XY1, sets VX to VX or VY
+				register[x] |= register[y];
+				break;
+			case 0x2:	// 8XY2, sets VX to VX and VY 
+				register[x] &= register[y];
+				break;
+			case 0x3: 	// 8XY3, sets VK to VK xor VY
+				register[x] = (register[x] ^ register[y]) & 0xFF;
+				break;
+			case 0x4:	// 8XY4, adds VY to VX. VF set to 1 if carry, 0 otherwise
 				register[x] += register[y];
 				register[15] = register[x] > 0xFF ? 1 : 0;
 				register[x] &= 0xFF;
 				break;
-			case 0x5: 
+			case 0x5: 	// 8XY5, subtracts VY from VX. VF set to 0 if borrow, 0 otherwise
 				register[15] = register[y] > register[x] ? 0 : 1;
 				register[x] -= register[y];
 				register[x] &= 0xFF;
 				break;
-			case 0x6: 
+			case 0x6: 	// 8XY6, shifts VX right by one. VF set to LSB of VX before shift
 				register[15] = register[x] & 0x1;
 				register[x] = (register[x] >> 1) & 0xFF;
 				break;
-			case 0x7: 
+			case 0x7: 	// 8XY7, sets VX to VY minus VX. VF set to 0 if borrow, 0 otherwise
 				register[15] = register[x] > register[y] ? 0 : 1;
 				register[x] = (register[y] - register[x]) & 0xFF;
 				break;
-			case 0xE: 
+			case 0xE: 	// 8XYE, shifts VX left by one. VF set to MSB of VX before shift
 				register[15] = (register[x] >> 7);
 				register[x] = (register[x] << 1) & 0xFF;
 				break;
 			default: invalidOpcode(opcode);
 			}
 			break;
-		case 0x9: if (register[x] != register[y]) PC += 2;				break;
-		case 0xA: I = nnn;												break;
-		case 0xB: PC = (nnn + register[0]) & 0xFFFF;					break;
-		case 0xC: register[x] = ((int) (Math.random() * 0xFF)) & nn; 	break;
-		case 0xD: draw(register[x], register[y], n);					break;
+		case 0x9: 	// 9XY0, skip next instruction if VX doesn't equal VY
+			if (register[x] != register[y]) 
+				PC += 2;
+			break;
+		case 0xA:	// ANNN, sets I to NNN 
+			I = nnn;
+			break;
+		case 0xB:	// BNNN, jumps to address NNN plus V0 
+			PC = (nnn + register[0]) & 0xFFFF;
+			break;
+		case 0xC:	// CXNN, sets VX to a random number in range 0 - 0xFF inclusive, and'd with NN 
+			register[x] = ((int) (Math.random() * 0xFF)) & nn;
+			break;
+		case 0xD:	// DXYN, does a draw operation (see draw method for details) 
+			draw(register[x], register[y], n);
+			break;
 		case 0xE: 
 			switch (low) {
-			case 0x9E: if (keys[register[x]]) PC += 2; 	break;
-			case 0xA1: if (!keys[register[x]]) PC += 2; 	break;
+			case 0x9E:	// EX9E, skips next instruction if key stored in VX is pressed
+				if (keys[register[x]]) 
+					PC += 2; 	
+				break;
+			case 0xA1: 	// EXA1, skips next instruction if key stored in VX is not pressed
+				if (!keys[register[x]]) 
+					PC += 2;
+				break;
 			default: invalidOpcode(opcode);
 			}
 			break;
 		case 0xF: 
 			switch (low) {
-			case 0x07: register[x] = delayTimer;		break;
-			case 0x0A: awaitKeyPress(x);				break;
-			case 0x15: delayTimer = register[x];		break;
-			case 0x18: soundTimer = register[x];		break;
-			case 0x1E:
-				register[15] = I + register[x] > 0xFFF ? 1 : 0;
+			case 0x07: 	// FX07, sets VX to the value of the delay timer
+				register[x] = delayTimer;
+				break;
+			case 0x0A:	// FX0A, a key is awaited, then stored in VX 
+				awaitKeyPress(x);
+				break;
+			case 0x15: 	// FX15, sets the delay timer to VX
+				delayTimer = register[x];
+				break;
+			case 0x18: 	// FX18, sets the sound timer to VX
+				soundTimer = register[x];
+				break;
+			case 0x1E:	// FX1E, adds VX to I (undocumented feature, VF set to 1 if carry, 0 otherwise
+				register[15] = (I + register[x]) > 0xFFF ? 1 : 0;
 				I = (I + register[x]) & 0xFFF;	
 				break;
-			case 0x29: I = register[x] * 5;				break;
-			case 0x33: 
+			case 0x29: 	// FX29, sets I to the location of character in VX (as defined in font-set)
+				I = register[x] * 5;
+				break;
+			case 0x33: 	// FX33, stores binary-coded decimal representation of VX in I, I + 1, and I + 2
 				memory[I] = register[x] / 100;
 				memory[I + 1] = (register[x] / 10) % 10;
 				memory[I + 2] = (register[x] % 100) % 10;
 				break;
-			case 0x55: for (int i = 0; i <= x; i++) memory[I + i] = register[i]; I += x + 1;		break;
-			case 0x65: for (int i = 0; i <= x; i++) register[i] = memory[I + i]; I += x + 1;		break;
+			case 0x55:	// FX55, stores V0 to VX in memory, starting at I, (with undocumented feature I = I + X + 1)
+				for (int i = 0; i <= x; i++)
+					memory[I + i] = register[i];
+				I += x + 1;
+				break;
+			case 0x65:	// FX65, fills V0 to VX with values in memory starting at I, (with undocumented feature I = I + X + 1)
+				for (int i = 0; i <= x; i++)
+					register[i] = memory[I + i];
+				I += x + 1;
+				break;
 			default: invalidOpcode(opcode);
 			}
 			break;
@@ -239,34 +313,34 @@ public class Chip8 implements KeyController {
 	private void draw(int x, int y, int height) {
 		//first set flag to off. It will later be set if a pixel is flipped from on to off
 		register[15] = 0;
-		
+
 		for (int j = 0; j < height; j++) {
 			int dat = memory[j + I];
 
 			for (int i = 0; i < 8; i++) {
 				//if the bit is 0, we aren't changing this value
 				if ((dat & (0x80 >> i)) == 0) continue;
-				
+
 				// NOTE: not sure if meant to skip out-of-bounds pixels or modulo them
 				// for the time being, I am ignoring them, as all games seem to function using this mechanism
-				
+
 				int rx = i + x;
 				int ry = j + y;
-				
+
 				// ignore them. 
 				if (rx >= WIDTH || ry >= HEIGHT) continue;
-				
+
 				// modulo version. Causes weird visual disturbances on the Blitz game
 				//rx %= 64;
 				//ry %= 32; 
-				
+
 				//if the pixel was on, it means we are now unsetting it, and we must set the carry flag
 				if (pixels[rx][ry]) register[15] = 1;
 				//flip the pixel
 				pixels[rx][ry] ^= true;
 			}
 		}
-		
+
 		//set draw flag to show we need to redraw
 		drawFlag = true;
 	}
@@ -281,7 +355,7 @@ public class Chip8 implements KeyController {
 				pixels[i][j] = false;
 			}
 		}
-			
+
 		//set draw flag to show we need to redraw
 		drawFlag = true;
 	}
@@ -295,7 +369,7 @@ public class Chip8 implements KeyController {
 	 */
 	private void awaitKeyPress(int destReg) throws RegisterOutOfBoundsException {
 		if (destReg < 0 || destReg > 15) throw new RegisterOutOfBoundsException("Cannot await on register: " + destReg);
-		
+
 		for (int i = 0; i < keys.length; i++) {
 			//if a key is pressed, the await succeeded, and we set it and return
 			if (keys[i]) {
@@ -318,7 +392,8 @@ public class Chip8 implements KeyController {
 	}
 
 	@Override
-	public void keyInteracted(int i, boolean pressed) {
+	public void keyInteracted(int i, boolean pressed) throws InvalidKeyException {
+		if (i < 0 || i > 15) throw new InvalidKeyException("Invalid key " + (pressed ? "pushed: " : "released: ") + i);
 		keys[i] = pressed;
 	}
 
@@ -415,7 +490,7 @@ public class Chip8 implements KeyController {
 	}
 
 	/** 
-	 * This is the font-set for the emulator of characters 0-9 A-F (hex charas).
+	 * This is the font-set for the emulator of characters 0-9 A-F (hex charas).<br>
 	 * Each 5 shorts is a different character, designated by the adjacent comment.
 	 */
 	private short[] font = { 
