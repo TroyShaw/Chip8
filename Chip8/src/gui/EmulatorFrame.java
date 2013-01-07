@@ -66,7 +66,7 @@ public class EmulatorFrame extends JFrame {
 	}
 	
 	/**
-	 * Initialises the frames settings, such as exit conditions, etc
+	 * Initialises the frames settings, such as exit conditions, etc.
 	 */
 	private void initFrame() {
 		setResizable(false);
