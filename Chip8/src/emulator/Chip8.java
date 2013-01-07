@@ -259,7 +259,7 @@ public class Chip8 implements KeyController {
 		case 0xF: 
 			switch (low) {
 			case 0x07: 	// FX07, sets VX to the value of the delay timer
-				register[x] = delayTimer;
+				register[x] = delayTimer & 0xFF;
 				break;
 			case 0x0A:	// FX0A, a key is awaited, then stored in VX 
 				awaitKeyPress(x);
@@ -272,7 +272,7 @@ public class Chip8 implements KeyController {
 				break;
 			case 0x1E:	// FX1E, adds VX to I (undocumented feature, VF set to 1 if carry, 0 otherwise
 				register[15] = (I + register[x]) > 0xFFF ? 1 : 0;
-				I = (I + register[x]) & 0xFFF;	
+				I = (I + register[x]) & 0xFFFF;	
 				break;
 			case 0x29: 	// FX29, sets I to the location of character in VX (as defined in font-set)
 				I = register[x] * 5;
@@ -285,12 +285,12 @@ public class Chip8 implements KeyController {
 			case 0x55:	// FX55, stores V0 to VX in memory, starting at I, (with undocumented feature I = I + X + 1)
 				for (int i = 0; i <= x; i++)
 					memory[I + i] = register[i];
-				I += x + 1;
+				I = (I + x + 1) & 0xFFFF;
 				break;
 			case 0x65:	// FX65, fills V0 to VX with values in memory starting at I, (with undocumented feature I = I + X + 1)
 				for (int i = 0; i <= x; i++)
 					register[i] = memory[I + i];
-				I += x + 1;
+				I = (I + x + 1) & 0xFFFF;
 				break;
 			default: invalidOpcode(opcode);
 			}
