@@ -2,6 +2,12 @@ package emulator;
 
 import java.awt.event.KeyEvent;
 
+/**
+ * Enum for the different keys.<br>
+ * Each entry has an associated bit (from 0-15) and a KeyEvent virtual-key code.
+ *
+ * @author Troy Shaw
+ */
 public enum Key {
 	x0	(0x0, KeyEvent.VK_Q),
 	x1	(0x1, KeyEvent.VK_W),
@@ -36,7 +42,7 @@ public enum Key {
 	}
 	
 	/**
-	 * Returns the position associated with this key (the hex key value).
+	 * Returns the position associated with this key (the hex key value), in the range 0-15 inclusive.
 	 * @return the value
 	 */
 	public int getPosition() {
