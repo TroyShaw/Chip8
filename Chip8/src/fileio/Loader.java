@@ -18,34 +18,44 @@ public final class Loader {
 	}
 	
 	/**
-	 * Creates and returns a byte array containing the contents of the file.
-	 * If any error occurs, null is returned.
+	 * Creates and returns a byte array containing the contents of the file.<br>
+	 * If any error occurs, null is returned.<br>
+	 * <p>
+	 * The file object can't be null, and must point to a valid file.
 	 * 
 	 * @param file the file we wish to load
-	 * @return the file as a byte array, or null
+	 * @return the file as a byte array, or null if something went wrong
 	 */
 	public static byte[] load(File file) {
+		if (file == null) throw new NullPointerException();
+		if (!file.exists()) throw new IllegalArgumentException("File must exist");
+		
+		//create the byte array of appropriate size
 		byte [] fileData = new byte[(int)file.length()];
 		
+		//open the file
 		DataInputStream dis = null;
 		try {
 			dis = new DataInputStream((new FileInputStream(file)));
 		} catch (FileNotFoundException e) {
-			e.printStackTrace();
+			return null;
 		}
 		
+		//read it
 		try {
 			dis.readFully(fileData);
 		} catch (IOException e) {
-			e.printStackTrace();
+			return null;
+		} finally {
+			//try close it
+			try {
+				dis.close();
+			} catch (IOException e) {
+				//oh well
+			}
 		}
 		
-		try {
-			dis.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
+		//return the data
 		return fileData;
 	}
 }
